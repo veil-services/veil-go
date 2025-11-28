@@ -9,7 +9,7 @@ We believe that protecting sensitive data in AI workflows should be accessible t
 1.  **Fork** the repository on GitHub.
 2.  **Clone** your fork locally:
     ```bash
-    git clone [https://github.com/YOUR_USERNAME/veil-go.git](https://github.com/YOUR_USERNAME/veil-go.git)
+    git clone https://github.com/YOUR_USERNAME/veil-go.git
     cd veil-go
     ```
 3.  **Create a branch** for your feature or fix:
