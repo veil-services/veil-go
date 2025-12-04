@@ -1,6 +1,12 @@
 # Veil (Go) 🛡️
 
-> The sensitive data firewall for LLMs.
+<div align="center">
+  <img src=".github/assets/veil.jpg" alt="Veil Logo" width="60%" style="border-radius:10px;">
+  <br>
+  <h3>The sensitive data firewall for LLMs.</h3>
+</div>
+
+<br>
 
 [![Go Reference](https://pkg.go.dev/badge/github.com/veil-services/veil-go.svg)](https://pkg.go.dev/github.com/veil-services/veil-go)
 [![Go Report Card](https://goreportcard.com/badge/github.com/veil-services/veil-go)](https://goreportcard.com/report/github.com/veil-services/veil-go)
