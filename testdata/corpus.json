@@ -1,0 +1,130 @@
+[
+  {
+    "id": "TP_EMAIL_001",
+    "category": "TRUE_POSITIVE",
+    "description": "Simple valid email",
+    "input": "Contact me at john.doe@example.com for more info.",
+    "expected_pii_count": 1,
+    "pii_types": ["EMAIL"]
+  },
+  {
+    "id": "TP_CPF_001",
+    "category": "TRUE_POSITIVE",
+    "description": "Valid CPF with formatting",
+    "input": "O documento do cliente é 111.444.777-35, verificar status.",
+    "expected_pii_count": 1,
+    "pii_types": ["CPF"]
+  },
+  {
+    "id": "TP_CNPJ_001",
+    "category": "TRUE_POSITIVE",
+    "description": "Valid CNPJ (Banco do Brasil)",
+    "input": "Empresa registrada sob CNPJ 00.000.000/0001-91.",
+    "expected_pii_count": 1,
+    "pii_types": ["CNPJ"]
+  },
+  {
+    "id": "TP_CC_001",
+    "category": "TRUE_POSITIVE",
+    "description": "Valid Credit Card (Visa Test)",
+    "input": "Charging card 4111 1111 1111 1111 today.",
+    "expected_pii_count": 1,
+    "pii_types": ["CREDIT_CARD"]
+  },
+  {
+    "id": "TP_IP_001",
+    "category": "TRUE_POSITIVE",
+    "description": "Valid IPv4 Localhost",
+    "input": "Server running at 127.0.0.1:8080.",
+    "expected_pii_count": 1,
+    "pii_types": ["IP"]
+  },
+  {
+    "id": "TP_IP_002",
+    "category": "TRUE_POSITIVE",
+    "description": "Valid IPv4 Public",
+    "input": "Connection from 192.168.0.1 established.",
+    "expected_pii_count": 1,
+    "pii_types": ["IP"]
+  },
+  {
+    "id": "TP_PHONE_001",
+    "category": "TRUE_POSITIVE",
+    "description": "Valid E.164 Phone (US)",
+    "input": "Call me at +1 555 010 9999 urgently.",
+    "expected_pii_count": 1,
+    "pii_types": ["PHONE"]
+  },
+  {
+    "id": "TP_PHONE_002",
+    "category": "TRUE_POSITIVE",
+    "description": "Valid E.164 Phone (BR)",
+    "input": "WhatsApp: +55 11 99999-9999.",
+    "expected_pii_count": 1,
+    "pii_types": ["PHONE"]
+  },
+  {
+    "id": "TP_UUID_001",
+    "category": "TRUE_POSITIVE",
+    "description": "Valid UUID v4 Lowercase",
+    "input": "TraceID: 123e4567-e89b-12d3-a456-426614174000 detected.",
+    "expected_pii_count": 1,
+    "pii_types": ["UUID"]
+  },
+  {
+    "id": "TP_UUID_002",
+    "category": "TRUE_POSITIVE",
+    "description": "Valid UUID Uppercase inside text",
+    "input": "User [A0E9825F-561A-4835-B2A8-2921C2618991] not found.",
+    "expected_pii_count": 1,
+    "pii_types": ["UUID"]
+  },
+  {
+    "id": "FP_CPF_001",
+    "category": "FALSE_POSITIVE",
+    "description": "Invalid CPF Checksum (looks like CPF but math is wrong)",
+    "input": "O valor da transação foi 123.456.789-99 (não é cpf).",
+    "expected_pii_count": 0,
+    "pii_types": []
+  },
+  {
+    "id": "FP_CPF_002",
+    "category": "FALSE_POSITIVE",
+    "description": "Repeated digits (known invalid)",
+    "input": "Teste com 111.111.111-11 deve falhar.",
+    "expected_pii_count": 0,
+    "pii_types": []
+  },
+  {
+    "id": "FP_CC_001",
+    "category": "FALSE_POSITIVE",
+    "description": "Invalid Luhn Credit Card",
+    "input": "Number 4111 1111 1111 1112 is not a valid card.",
+    "expected_pii_count": 0,
+    "pii_types": []
+  },
+  {
+    "id": "FP_IP_001",
+    "category": "FALSE_POSITIVE",
+    "description": "Invalid IP Range",
+    "input": "Address 256.0.0.1 is impossible.",
+    "expected_pii_count": 0,
+    "pii_types": []
+  },
+  {
+    "id": "MIXED_001",
+    "category": "COMPLEX",
+    "description": "Multiple PIIs in one sentence",
+    "input": "User john@test.com (CPF 111.444.777-35) used card 4111 1111 1111 1111 from IP 10.0.0.1 with TraceID 123e4567-e89b-12d3-a456-426614174000.",
+    "expected_pii_count": 5,
+    "pii_types": ["EMAIL", "CPF", "CREDIT_CARD", "IP", "UUID"]
+  },
+  {
+    "id": "EDGE_001",
+    "category": "EDGE_CASE",
+    "description": "Similar numbers that are NOT PII",
+    "input": "Version 12.3.456.78 is not an IP. Price is 123.456.",
+    "expected_pii_count": 0,
+    "pii_types": []
+  }
+]

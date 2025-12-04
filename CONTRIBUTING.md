@@ -1,65 +1,75 @@
 # Contributing to Veil
 
-First off, thank you for considering contributing to Veil! 🛡️
+First off, thanks for taking the time to contribute! 🎉
 
-We believe that protecting sensitive data in AI workflows should be accessible to everyone, and your help makes that possible.
+Veil is a security-critical library, so we follow strict guidelines to ensure stability and safety.
 
-## ⚡ Quick Start
+## 🛡️ Security & Branch Strategy
 
-1.  **Fork** the repository on GitHub.
-2.  **Clone** your fork locally:
-    ```bash
-    git clone https://github.com/YOUR_USERNAME/veil-go.git
-    cd veil-go
-    ```
-3.  **Create a branch** for your feature or fix:
-    ```bash
-    git checkout -b feature/amazing-detector
-    ```
+We protect our `main` branch to prevent accidental breakage.
 
-## 🛠️ Development Guidelines
+1.  **Direct Push is Blocked:** You cannot push directly to `main`.
+2.  **Pull Requests Only:** All changes must come through a Pull Request (PR).
+3.  **CI Checks:** All PRs must pass the automated tests (GitHub Actions) before merging.
 
-### 1. Language & Tools
-We use **Go** (latest stable version). Please ensure your code adheres to standard Go idioms.
+### The Flow
+1.  **Fork & Branch:** Create a branch for your feature (`feat/my-feature`) or bugfix (`fix/memory-leak`).
+2.  **Code:** Implement your changes ensuring you add tests.
+3.  **Test:** Run `go test -race ./...` locally.
+4.  **PR:** Open a Pull Request to `main`.
+5.  **Review:** Wait for approval and CI checks (✅).
+6.  **Merge:** We use **Squash and Merge** to keep history clean.
 
-### 2. Code Style
-We strictly follow `gofmt`. Before committing, please run:
+## 📝 Commit & Branch Convention
 
-```bash
-go fmt ./...
-go vet ./...
-```
+We follow the **Conventional Commits** specification. This helps us generate changelogs automatically and keep the history readable.
 
-### 3. Testing
-This is a security library; correctness is paramount.
-- New Features: Must include unit tests covering both success and edge cases.
-- Bug Fixes: Must include a regression test (a test that fails without the fix and passes with it).
+**Format:** `type: short description`
 
-Run tests locally:
-```bash
-go test ./... -v
-```
+| Type | Description | Example |
+| :--- | :--- | :--- |
+| **feat** | New feature for the user | `feat: add UUID detector` |
+| **fix** | Bug fix | `fix: correct CPF checksum logic` |
+| **chore** | Maintenance, config, build | `chore: setup github actions` |
+| **docs** | Documentation changes | `docs: update readme benchmarks` |
+| **test** | Adding or fixing tests | `test: add concurrency stress test` |
+| **perf** | Performance improvements | `perf: zero-alloc optimization` |
+| **refactor** | Code change without new features/fixes | `refactor: simplify mask loop` |
 
-### 4. Adding New Detectors
-If you are contributing a new PII detector (e.g., for a specific country document):
-1. Add the logic in the detectors/ package.
-2. Add validation tests in detectors/your_detector_test.go.
-3. Ensure you handle false positives (e.g., don't mask a simple number as a credit card).
+**Branch Naming:**
+Use the same prefixes for your branches:
+- `feat/new-detector`
+- `fix/memory-leak`
+- `chore/release-v1`
 
-## 📝 Commit Messages
-We follow the Conventional Commits specification. This helps us generate changelogs automatically.
-- feat: add Brazilian CNH detector
-- fix: resolve panic on empty string input
-- docs: update README with logging example
-- test: add benchmark for masking engine
+## 📦 Release Process (Maintainers Only)
 
-## 🚀 Submitting a Pull Request
-1. Push your branch to your fork.
-2. Open a Pull Request against the main branch of veil-services/veil-go.
-3. Fill out the PR template describing your changes.
-4. Wait for the CI checks to pass.
+We use [Semantic Versioning](https://semver.org/) and GitHub Releases.
 
-## 🤝 Code of Conduct
-By participating in this project, you agree to abide by our Code of Conduct. Please be respectful and inclusive.
+- **vX.Y.Z** (e.g., v1.0.0)
+    - **X (Major):** Breaking changes.
+    - **Y (Minor):** New features (backwards compatible).
+    - **Z (Patch):** Bug fixes.
 
-Happy coding!
+### How to Release
+
+1.  Ensure `main` is stable and passing CI.
+2.  Go to the **Releases** tab on GitHub.
+3.  Click **Draft a new release**.
+4.  **Tag:** Create a new tag (e.g., `v1.0.0`).
+5.  **Target:** `main`.
+6.  **Title:** e.g., "v1.0.0 - Production Ready".
+7.  **Description:** Use the "Generate release notes" button.
+8.  **Publish:** Click "Publish release".
+
+This will automatically tag the commit and make the new version available to `go get`.
+
+## 🧪 Testing Guidelines
+
+- **Unit Tests:** Required for every new detector or logic.
+- **Corpus Tests:** If you add a detector, add True/False positive cases to `testdata/corpus.json`.
+- **Performance:** Run `go test -bench=.` to ensure no regressions (Target: Zero Allocation for hot paths).
+
+## License
+
+By contributing, you agree that your contributions will be licensed under its MIT License.
