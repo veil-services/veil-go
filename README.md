@@ -31,7 +31,7 @@ Veil was built for high-throughput environments (API Gateways, Stream Processors
 
 - **⚡ Blazing Fast:** Processed **10,000 requests in ~40ms** in benchmarks. Overhead is negligible (< 2µs/op).
 - **🔒 Thread-Safe:** Fully concurrent design. Validated with massive stress tests (10k+ goroutines).
-- **💾 Zero-Alloc Logic:** Validators for CPF, CNPJ, and Credit Cards use byte-level arithmetic to avoid GC pressure.
+- **💾 Low-Allocation Logic:** Validators for CPF, CNPJ, and Credit Cards use byte-level arithmetic to minimize GC pressure.
 - **🎯 Deterministic:** `john@example.com` becomes `<<EMAIL_1>>` consistently within a session, allowing the LLM to track references.
 
 ---
@@ -106,7 +106,7 @@ if errors.Is(err, veil.ErrContextInvalid) {
 
 | Type | Token | Logic |
 | :--- | :--- | :--- |
-| **Email** | `<<EMAIL_N>>` | RFC 5322 Regex |
+| **Email** | `<<EMAIL_N>>` | Custom Parser (RFC 5322 subset) |
 | **Credit Card** | `<<CREDIT_CARD_N>>` | Luhn Algorithm Validation (Zero-Alloc) |
 | **IPv4** | `<<IP_N>>` | `net.ParseIP` Validation |
 | **Global Phone** | `<<PHONE_N>>` | E.164 Format (`+1 555...`) |
@@ -130,13 +130,13 @@ Environment: AMD Ryzen 5 5600, Go 1.21
 
 | Benchmark | ns/op | B/op | allocs/op |
 | :-- | --: | --: | --: |
-| `BenchmarkEmailDetector_LongText` | 517.5 | 848 | 4 |
-| `BenchmarkPhoneDetector_LongPrompt` | 757.9 | 1872 | 5 |
-| `BenchmarkIPDetector_Log` | 1029 | 1872 | 5 |
-| `BenchmarkCreditCardDetector_LongText` | 375.8 | 400 | 3 |
-| `BenchmarkCPFDetector_LongText` | 1539 | 467 | 5 |
-| `BenchmarkCNPJDetector_LongText` | 1526 | 532 | 6 |
-| `BenchmarkUUIDDetector_LongText` | 294.1 | 400 | 3 |
+| `BenchmarkEmailDetector_LongText` | 427.7 | 848 | 4 |
+| `BenchmarkPhoneDetector_LongPrompt` | 560.0 | 1872 | 5 |
+| `BenchmarkIPDetector_Log` | 819.5 | 1872 | 5 |
+| `BenchmarkCreditCardDetector_LongText` | 331.1 | 400 | 3 |
+| `BenchmarkCPFDetector_LongText` | 241.1 | 400 | 3 |
+| `BenchmarkCNPJDetector_LongText` | 290.8 | 400 | 3 |
+| `BenchmarkUUIDDetector_LongText` | 241.0 | 400 | 3 |
 
 These numbers are our regression targets—any change to a detector should stay at or below the listed allocations and latencies.
 

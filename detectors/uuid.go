@@ -58,5 +58,9 @@ func matchUUID(s string, start int) (int, bool) {
 		}
 	}
 
+	if idx < n && isHexChar(s[idx]) {
+		return 0, false
+	}
+
 	return idx, true
 }

@@ -1,56 +1,85 @@
 package detectors
 
-import "regexp"
-
 type CNPJDetector struct{}
-
-// Regex: xx.xxx.xxx/0001-xx or just numbers (14 digits)
-var cnpjRegex = regexp.MustCompile(`\d{2}\.?\d{3}\.?\d{3}/?\d{4}-?\d{2}`)
 
 func (d *CNPJDetector) Name() string {
 	return "br_cnpj"
 }
 
 func (d *CNPJDetector) Scan(input string) []Match {
-	matches := cnpjRegex.FindAllStringIndex(input, -1)
-	if len(matches) == 0 {
-		return nil
-	}
+	var results []Match
+	var buffer [14]byte
 
-	results := make([]Match, 0, len(matches))
-
-	for _, loc := range matches {
-		start, end := loc[0], loc[1]
-		val := input[start:end]
-
-		var digits [14]byte
-		pos := 0
-		for k := start; k < end && pos < 14; k++ {
-			if isDigitChar(input[k]) {
-				digits[pos] = input[k]
-				pos++
-			}
+	for i := 0; i < len(input); i++ {
+		if !isDigitChar(input[i]) {
+			continue
 		}
-
-		if pos != 14 {
+		if i > 0 && isDigitChar(input[i-1]) {
 			continue
 		}
 
-		if isValidCNPJBytes(digits[:]) {
-			results = append(results, Match{
-				StartIndex: start,
-				EndIndex:   end,
-				Value:      val,
-				Type:       TypeCNPJ,
-				Score:      1.0,
-			})
+		start := i
+		count := 0
+		j := i
+
+		for j < len(input) && count < 14 {
+			c := input[j]
+			switch {
+			case isDigitChar(c):
+				buffer[count] = c
+				count++
+			case isCNPJSeparator(c):
+				if !validCNPJSeparatorPosition(c, count) {
+					goto nextCandidate
+				}
+			case c == ' ':
+				if count == 0 {
+					goto nextCandidate
+				}
+			default:
+				goto evaluate
+			}
+			j++
 		}
+
+	evaluate:
+		if count == 14 {
+			if j < len(input) && isDigitChar(input[j]) {
+				goto nextCandidate
+			}
+			if isValidCNPJBytes(buffer[:]) {
+				results = append(results, Match{
+					StartIndex: start,
+					EndIndex:   j,
+					Value:      input[start:j],
+					Type:       TypeCNPJ,
+					Score:      1.0,
+				})
+				i = j - 1
+				continue
+			}
+		}
+	nextCandidate:
 	}
+
 	return results
 }
 
 func NewCNPJDetector() Detector {
 	return &CNPJDetector{}
+}
+
+func validCNPJSeparatorPosition(sep byte, digitCount int) bool {
+	switch sep {
+	case '.':
+		return digitCount == 2 || digitCount == 5
+	case '/':
+		return digitCount == 8
+	case '-':
+		return digitCount == 12
+	default:
+		return false
+	}
 }
 
 // isValidCNPJ validates CNPJ using Mod11 with specific weights and byte arithmetic.
