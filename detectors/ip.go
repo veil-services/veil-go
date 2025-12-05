@@ -31,8 +31,11 @@ func NewIPDetector() Detector {
 }
 
 func matchIPv4(s string, start int) (int, int, bool) {
-	if start > 0 && isDigitChar(s[start-1]) {
-		return 0, 0, false
+	if start > 0 {
+		prev := s[start-1]
+		if isDigitChar(prev) || prev == '.' || prev == '-' {
+			return 0, 0, false
+		}
 	}
 
 	n := len(s)
@@ -44,6 +47,7 @@ func matchIPv4(s string, start int) (int, int, bool) {
 		}
 		val := 0
 		digits := 0
+		firstChar := s[idx]
 		for idx < n && isDigitChar(s[idx]) {
 			val = val*10 + int(s[idx]-'0')
 			digits++
@@ -55,6 +59,9 @@ func matchIPv4(s string, start int) (int, int, bool) {
 		if digits == 0 {
 			return 0, 0, false
 		}
+		if digits > 1 && firstChar == '0' {
+			return 0, 0, false
+		}
 		if octet < 3 {
 			if idx >= n || s[idx] != '.' {
 				return 0, 0, false
@@ -64,7 +71,7 @@ func matchIPv4(s string, start int) (int, int, bool) {
 	}
 
 	if idx < n {
-		if isDigitChar(s[idx]) || s[idx] == '.' || (s[idx] >= 'a' && s[idx] <= 'z') || (s[idx] >= 'A' && s[idx] <= 'Z') {
+		if isDigitChar(s[idx]) || s[idx] == '.' || s[idx] == '-' || isLetter(s[idx]) {
 			return 0, 0, false
 		}
 	}

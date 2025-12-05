@@ -9,3 +9,11 @@ func isHexChar(b byte) bool {
 		(b >= 'a' && b <= 'f') ||
 		(b >= 'A' && b <= 'F')
 }
+
+func isCNPJSeparator(b byte) bool {
+	return b == '.' || b == '-' || b == '/' || b == ' '
+}
+
+func isCPFSeparator(b byte) bool {
+	return b == '.' || b == '-' || b == ' '
+}

@@ -3,7 +3,6 @@ package veil
 import (
 	"errors"
 	"fmt"
-	"regexp"
 	"sort"
 	"strings"
 
@@ -118,6 +117,9 @@ func (v *Veil) Mask(input string) (string, *RestoreContext, error) {
 
 	// 3. Tokenization and String Construction
 	var sb strings.Builder
+	// Pre-allocate builder size to avoid reallocations (heuristic: input size)
+	sb.Grow(len(input))
+
 	ctx := &RestoreContext{
 		Data: make(map[string]string),
 	}
@@ -177,21 +179,41 @@ func (v *Veil) Restore(maskedInput string, ctx *RestoreContext) (string, error) 
 		return maskedInput, ErrContextInvalid
 	}
 
-	// Regex to find tokens: <<TYPE_NUMBER>>
-	// e.g. <<EMAIL_1>>, <<CPF_20>>
-	tokenRegex := regexp.MustCompile(`<<[A-Z_]+_\d+>>`)
+	// Fast path: if no tokens marker exists, return immediately
+	if !strings.Contains(maskedInput, "<<") {
+		return maskedInput, nil
+	}
 
-	// Replacement function
-	result := tokenRegex.ReplaceAllStringFunc(maskedInput, func(token string) string {
-		if original, ok := ctx.Data[token]; ok {
-			return original
+	var sb strings.Builder
+	sb.Grow(len(maskedInput)) // Optimistic allocation
+
+	n := len(maskedInput)
+	i := 0
+
+	for i < n {
+		// Find start of potential token
+		if maskedInput[i] == '<' && i+1 < n && maskedInput[i+1] == '<' {
+			// Found '<<', look for closing '>>'
+			closing := strings.Index(maskedInput[i:], ">>")
+			if closing != -1 {
+				closingIndex := i + closing + 2 // include '>>' length
+				tokenCandidate := maskedInput[i:closingIndex]
+
+				// Check if this token exists in our context
+				if originalValue, exists := ctx.Data[tokenCandidate]; exists {
+					sb.WriteString(originalValue)
+					i = closingIndex
+					continue
+				}
+				// If not in context (or false positive like <<Shift>>), treat as normal text
+			}
 		}
-		// If not found in context, keep the token (security)
-		// This might happen if the LLM hallucinates a new token
-		return token
-	})
 
-	return result, nil
+		sb.WriteByte(maskedInput[i])
+		i++
+	}
+
+	return sb.String(), nil
 }
 
 // Sanitize is a helper for logs that masks any input and returns the safe string.

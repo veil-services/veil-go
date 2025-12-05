@@ -1,57 +1,80 @@
 package detectors
 
-import "regexp"
-
 type CPFDetector struct{}
-
-// Regex: \d{3}\.?\d{3}\.?\d{3}-?\d{2}
-var cpfRegex = regexp.MustCompile(`\d{3}\.?\d{3}\.?\d{3}-?\d{2}`)
 
 func (d *CPFDetector) Name() string {
 	return "br_cpf"
 }
 
 func (d *CPFDetector) Scan(input string) []Match {
-	matches := cpfRegex.FindAllStringIndex(input, -1)
-	if len(matches) == 0 {
-		return nil
-	}
+	var results []Match
+	var digits [11]byte
 
-	// Pre-allocate slice to avoid resizes (micro-optimization)
-	results := make([]Match, 0, len(matches))
-
-	for _, loc := range matches {
-		start, end := loc[0], loc[1]
-		val := input[start:end]
-
-		var digits [11]byte
-		pos := 0
-		for k := start; k < end && pos < 11; k++ {
-			if isDigitChar(input[k]) {
-				digits[pos] = input[k]
-				pos++
-			}
+	for i := 0; i < len(input); i++ {
+		if !isDigitChar(input[i]) {
+			continue
 		}
-
-		if pos != 11 {
+		if i > 0 && isDigitChar(input[i-1]) {
 			continue
 		}
 
-		if isValidCPFBytes(digits[:]) {
-			results = append(results, Match{
-				StartIndex: start,
-				EndIndex:   end,
-				Value:      val,
-				Type:       TypeCPF,
-				Score:      1.0,
-			})
+		start := i
+		count := 0
+		j := i
+
+		for j < len(input) && count < 11 {
+			c := input[j]
+			switch {
+			case isDigitChar(c):
+				digits[count] = c
+				count++
+			case isCPFSeparator(c):
+				if count == 0 || !validCPFSeparatorPosition(c, count) {
+					goto nextCandidate
+				}
+			default:
+				goto evaluate
+			}
+			j++
 		}
+
+	evaluate:
+		if count == 11 {
+			if j < len(input) && isDigitChar(input[j]) {
+				goto nextCandidate
+			}
+			if isValidCPFBytes(digits[:]) {
+				results = append(results, Match{
+					StartIndex: start,
+					EndIndex:   j,
+					Value:      input[start:j],
+					Type:       TypeCPF,
+					Score:      1.0,
+				})
+				i = j - 1
+				continue
+			}
+		}
+
+	nextCandidate:
 	}
+
 	return results
 }
 
 func NewCPFDetector() Detector {
 	return &CPFDetector{}
+}
+
+func validCPFSeparatorPosition(sep byte, count int) bool {
+	switch sep {
+	case '.':
+		return count == 3 || count == 6
+	case '-':
+		return count == 9
+	default:
+		return false
+	}
 }
 
 // isValidCPF implements the Mod11 algorithm using byte arithmetic for zero-allocation.

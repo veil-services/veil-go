@@ -4,12 +4,14 @@ import (
 	"errors"
 	"fmt"
 	"math/rand"
+	"strings"
 	"sync"
 	"testing"
 	"time"
 )
 
 func TestVeil_MaskRestore(t *testing.T) {
+	// Inicializa com todos os detectores principais
 	v, err := New(
 		WithEmail(),
 		WithCPF(),
@@ -22,18 +24,28 @@ func TestVeil_MaskRestore(t *testing.T) {
 
 	input := "Email: john@example.com, CPF: 111.444.777-35, CC: 4111 1111 1111 1111"
 
+	// 1. Mask
 	masked, ctx, err := v.Mask(input)
 	if err != nil {
 		t.Fatalf("Mask failed: %v", err)
 	}
 
+	// Verificações de Sanidade
 	if masked == input {
 		t.Error("Masked string should be different from input")
 	}
+
+	// Deve ter encontrado 3 itens (Email, CPF, CC)
 	if len(ctx.Data) != 3 {
 		t.Errorf("Expected 3 items in context, got %d. Dump: %v", len(ctx.Data), ctx.Data)
 	}
 
+	// Verifica se os tokens estão no formato esperado
+	if !strings.Contains(masked, "<<EMAIL_1>>") {
+		t.Error("Expected <<EMAIL_1>> token")
+	}
+
+	// 2. Restore
 	restored, err := v.Restore(masked, ctx)
 	if err != nil {
 		t.Fatalf("Restore failed: %v", err)
@@ -44,49 +56,73 @@ func TestVeil_MaskRestore(t *testing.T) {
 	}
 }
 
+// Teste de Rigor: Garante que os novos parsers Zero-Alloc
+// não mascaram dados inválidos (reduzindo alucinação do LLM).
+func TestVeil_Strictness(t *testing.T) {
+	v, _ := New(WithCPF(), WithCreditCard())
+
+	// Input contém um CPF com dígito verificador errado e um cartão que falha no Luhn
+	input := "Invalid CPF: 111.444.777-00, Invalid Card: 4111 1111 1111 1112"
+
+	masked, _, _ := v.Mask(input)
+
+	// O texto NÃO deve mudar, pois os dados são inválidos matematicamente
+	if masked != input {
+		t.Errorf("Veil should ignore invalid PII.\nInput: %s\nMasked: %s", input, masked)
+	}
+}
+
 func TestVeil_ConsistentTokenization(t *testing.T) {
 	v, _ := New(WithEmail(), WithConsistentTokenization(true))
 
 	input := "john@example.com sent to john@example.com"
 	masked, _, _ := v.Mask(input)
 
-	if contains(masked, "EMAIL_2") {
+	// Se consistente, ambos devem virar <<EMAIL_1>>. Não deve existir EMAIL_2.
+	if strings.Contains(masked, "EMAIL_2") {
 		t.Error("ConsistentTokenization failed: found different tokens for same value")
+	}
+
+	// Contagem simples de ocorrências
+	count := strings.Count(masked, "<<EMAIL_1>>")
+	if count != 2 {
+		t.Errorf("Expected 2 occurrences of <<EMAIL_1>>, got %d", count)
 	}
 }
 
-// TestContextIsolation proves that contexts from different users
-// do not mix, even if they generate the same tokens (ex: <<EMAIL_1>>).
+// TestContextIsolation prova que contextos de usuários diferentes
+// não se misturam, mesmo que gerem os mesmos tokens (ex: <<EMAIL_1>>).
 func TestContextIsolation(t *testing.T) {
 	v, _ := New(WithEmail())
 
-	// Scenario: Two different users generating the same EMAIL_1 token
+	// Cenário: Dois usuários diferentes gerando o mesmo token sequencial
 	inputA := "User A email is alice@test.com"
 	inputB := "User B email is bob@test.com"
 
-	// 1. Mask (happens at different times or goroutines)
-	maskedA, ctxA, _ := v.Mask(inputA) // maskedA will contain <<EMAIL_1>>
-	maskedB, ctxB, _ := v.Mask(inputB) // maskedB will contain <<EMAIL_1>> too
+	// 1. Mask (acontece em momentos ou goroutines diferentes)
+	maskedA, ctxA, _ := v.Mask(inputA) // maskedA terá <<EMAIL_1>>
+	maskedB, ctxB, _ := v.Mask(inputB) // maskedB terá <<EMAIL_1>> também
 
-	// Check: Did both generate EMAIL_1?
-	if !contains(maskedA, "<<EMAIL_1>>") || !contains(maskedB, "<<EMAIL_1>>") {
+	// Check: Ambos geraram EMAIL_1?
+	if !strings.Contains(maskedA, "<<EMAIL_1>>") || !strings.Contains(maskedB, "<<EMAIL_1>>") {
 		t.Fatal("Expected both masks to produce <<EMAIL_1>> as they are fresh contexts")
 	}
 
-	// 2. Cross Restore (What if we swapped?)
-	// Restore A's text with A's context (Correct)
+	// 2. Cross Restore (O que acontece se trocarmos os contextos?)
+
+	// Restore A com contexto A (Correto)
 	restoredA, _ := v.Restore(maskedA, ctxA)
 	if restoredA != inputA {
 		t.Errorf("Restore A failed. Got: %s, Want: %s", restoredA, inputA)
 	}
 
-	// Restore B's text with B's context (Correct)
+	// Restore B com contexto B (Correto)
 	restoredB, _ := v.Restore(maskedB, ctxB)
 	if restoredB != inputB {
 		t.Errorf("Restore B failed. Got: %s, Want: %s", restoredB, inputB)
 	}
 
-	// Ensure context A does *NOT* have B's data
+	// Garante que o contexto A *NÃO* tem os dados de B
 	valInA := ctxA.Data["<<EMAIL_1>>"]
 	valInB := ctxB.Data["<<EMAIL_1>>"]
 
@@ -112,13 +148,13 @@ func TestConcurrency_Massive(t *testing.T) {
 	wg.Add(routines)
 
 	errChan := make(chan error, routines)
-
 	start := time.Now()
 
 	for i := 0; i < routines; i++ {
 		go func(id int) {
 			defer wg.Done()
 
+			// Gera inputs únicos para estressar o mapa de contexto
 			localInput := fmt.Sprintf("User%d: test-%d@example.com (CPF 111.444.777-35)", id, id)
 
 			masked, ctx, err := v.Mask(localInput)
@@ -132,6 +168,7 @@ func TestConcurrency_Massive(t *testing.T) {
 				return
 			}
 
+			// Simula latência de rede aleatória (LLM call)
 			time.Sleep(time.Duration(rand.Intn(5)) * time.Millisecond)
 
 			restored, err := v.Restore(masked, ctx)
@@ -152,7 +189,7 @@ func TestConcurrency_Massive(t *testing.T) {
 
 	for err := range errChan {
 		t.Error(err)
-		t.FailNow()
+		t.FailNow() // Para no primeiro erro para não inundar o log
 	}
 
 	t.Logf("Processed %d concurrent requests in %v", routines, time.Since(start))
@@ -164,10 +201,6 @@ func TestErrors(t *testing.T) {
 	if !errors.Is(err, ErrContextInvalid) {
 		t.Errorf("Expected ErrContextInvalid, got %v", err)
 	}
-}
-
-func contains(s, substr string) bool {
-	return len(s) >= len(substr) && s[0:len(substr)] == substr || len(s) > len(substr) && contains(s[1:], substr)
 }
 
 func BenchmarkMask(b *testing.B) {
